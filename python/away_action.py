@@ -40,6 +40,9 @@
 #
 #
 #   History:
+#   2019-08-21 :
+#   version 0.6: change to run on Python 3 with Weechat
+#                 edited by: R Heisenburg <Heisenburg01@protonmail.com>
 #   2014-05-10:
 #   version 0.5: change hook_print callback argument type of
 #                displayed/highlight (WeeChat >= 1.0)
@@ -53,35 +56,38 @@
 #   version 0.1: initial release
 #
 ###
+from __future__ import print_function
 
-SCRIPT_NAME    = "away_action"
-SCRIPT_AUTHOR  = "xt <xt@bash.no>"
+SCRIPT_NAME = "away_action"
+SCRIPT_AUTHOR = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.5"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "Run command on highlight and privmsg when away"
+SCRIPT_DESC = "Run command on highlight and privmsg when away"
 
 ### Default Settings ###
 settings = {
-'ignore_channel' : '',
-'ignore_nick'    : '',
-'ignore_text'    : '',
-'command'        : '/mute msg ', # Command to be ran, nick and message will be inserted at the end
-'force_enabled'  : 'off',
-'include_channel': 'off', # Option to include channel in insert after command.
+    'ignore_channel': '',
+    'ignore_nick': '',
+    'ignore_text': '',
+    'command': '/mute msg ',  # Command to be ran, nick and message will be inserted at the end
+    'force_enabled': 'off',
+    'include_channel': 'off',  # Option to include channel in insert after command.
 }
 
 ignore_nick, ignore_text, ignore_channel = (), (), ()
 last_buffer = ''
 try:
     import weechat
+
     w = weechat
     WEECHAT_RC_OK = weechat.WEECHAT_RC_OK
     import_ok = True
     from fnmatch import fnmatch
 except:
-    print "This script must be run under WeeChat."
-    print "Get WeeChat now at: http://www.weechat.org/"
+    print("This script must be run under WeeChat.")
+    print("Get WeeChat now at: http://www.weechat.org/")
     import_ok = False
+
 
 class Ignores(object):
     def __init__(self, ignore_type):
@@ -93,9 +99,9 @@ class Ignores(object):
     def _get_ignores(self):
         assert self.ignore_type is not None
         ignores = weechat.config_get_plugin(self.ignore_type).split(',')
-        ignores = [ s.lower() for s in ignores if s ]
-        self.ignores = [ s for s in ignores if s[0] != '!' ]
-        self.exceptions = [ s[1:] for s in ignores if s[0] == '!' ]
+        ignores = [s.lower() for s in ignores if s]
+        self.ignores = [s for s in ignores if s[0] != '!']
+        self.exceptions = [s[1:] for s in ignores if s[0] == '!']
 
     def __contains__(self, s):
         s = s.lower()
@@ -107,7 +113,10 @@ class Ignores(object):
                 return True
         return False
 
-config_string = lambda s : weechat.config_string(weechat.config_get(s))
+
+config_string = lambda s: weechat.config_string(weechat.config_get(s))
+
+
 def get_nick(s):
     """Strip nickmodes and prefix, suffix."""
     if not s: return ''
@@ -123,13 +132,13 @@ def get_nick(s):
     s = s.lstrip(modes)
     return s
 
-def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
 
+def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
     global ignore_nick, ignore_text, ignore_channel, last_buffer
 
     # Check if we are either away or force_enabled is on
     if not w.buffer_get_string(buffer, 'localvar_away') and \
-       not w.config_get_plugin('force_enabled') == 'on':
+            not w.config_get_plugin('force_enabled') == 'on':
         return WEECHAT_RC_OK
 
     if (int(hilight) or 'notify_private' in tags) and int(display):
@@ -142,15 +151,16 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
                           w.buffer_get_string(buffer, 'name')
             command = weechat.config_get_plugin('command')
             if not command.startswith('/'):
-                w.prnt('', '%s: Error: %s' %(SCRIPT_NAME, 'command must start with /'))
+                w.prnt('', '%s: Error: %s' % (SCRIPT_NAME, 'command must start with /'))
                 return WEECHAT_RC_OK
 
             if 'channel' in locals() and \
-                w.config_get_plugin('include_channel') == 'on':
-                w.command('', '%s @%s <%s> %s' %(command, channel, prefix, msg))
+                    w.config_get_plugin('include_channel') == 'on':
+                w.command('', '%s @%s <%s> %s' % (command, channel, prefix, msg))
             else:
-                w.command('', '%s <%s> %s' %(command, prefix, msg))
+                w.command('', '%s <%s> %s' % (command, prefix, msg))
     return WEECHAT_RC_OK
+
 
 def ignore_update(*args):
     ignore_channel._get_ignores()
@@ -166,20 +176,18 @@ def info_hook_cb(data, info_name, arguments):
 
 if __name__ == '__main__' and import_ok and \
         weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE, SCRIPT_DESC,
-        '', ''):
+                         '', ''):
 
-
-    for opt, val in settings.iteritems():
+    for opt, val in settings.items():
         if not weechat.config_is_set_plugin(opt):
             weechat.config_set_plugin(opt, val)
 
     ignore_channel = Ignores('ignore_channel')
     ignore_nick = Ignores('ignore_nick')
     ignore_text = Ignores('ignore_text')
-    weechat.hook_config('plugins.var.python.%s.ignore_*' %SCRIPT_NAME, 'ignore_update', '')
+    weechat.hook_config('plugins.var.python.%s.ignore_*' % SCRIPT_NAME, 'ignore_update', '')
 
     weechat.hook_print('', '', '', 1, 'away_cb', '')
-    w.hook_info('%s_buffer' %SCRIPT_NAME, '', '', 'info_hook_cb', '')
-
+    w.hook_info('%s_buffer' % SCRIPT_NAME, '', '', 'info_hook_cb', '')
 
 # vim:set shiftwidth=4 tabstop=4 softtabstop=4 expandtab textwidth=100:
